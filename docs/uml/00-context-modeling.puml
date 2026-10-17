@@ -1,0 +1,42 @@
+@startuml
+title Finance Management Platform - GUI Delivery Context
+
+left to right direction
+skinparam shadowing false
+skinparam rectangle {
+  RoundCorner 12
+}
+
+actor "Personal User" as PersonalUser
+actor "Household Member" as HouseholdUser <<planned>>
+actor "Company Finance User" as BusinessUser <<planned>>
+
+rectangle "Graphical Desktop Environment\nTkinter + Matplotlib" as Desktop <<external platform>>
+rectangle "Finance Management Platform\n\nTransaction management\nStatistics and visualization\nShared financial state" as FinanceSystem <<system>>
+database "Shared SQLite Database\n\ndata/finance_tracker.db" as Ledger <<external storage>>
+
+PersonalUser --> FinanceSystem : Packaged GUI: add, query, and delete transactions;\nundo/redo; view statistics and dashboard
+FinanceSystem --> PersonalUser : Transaction lists, summaries, charts,\nand operation results
+HouseholdUser ..> FinanceSystem : Future household GUI <<planned>>
+BusinessUser ..> FinanceSystem : Future company-finance GUI <<planned>>
+
+FinanceSystem --> Desktop : Render windows and charts
+Desktop --> FinanceSystem : Mouse, keyboard, and window events
+
+FinanceSystem --> Ledger : Atomically save transactions, budgets,\nand application metadata
+Ledger --> FinanceSystem : Load the shared financial state\nand storage revision
+
+note bottom of FinanceSystem
+  The packaged product exposes a graphical interface only.
+  Personal finance is implemented in the current release.
+  Household and company-finance interfaces are planned extensions.
+end note
+
+note bottom of Ledger
+  The packaged GUI uses the SQLite database beside the executable.
+  SQLite is embedded and does not require a database server.
+  The current system has no cloud synchronization, remote API,
+  or third-party payment platform.
+end note
+
+@enduml

@@ -1,0 +1,63 @@
+@startuml
+title TransactionManager Undo / Redo - Activity Diagram
+
+skinparam shadowing false
+
+start
+
+if (Requested operation?) then (undo)
+  if (_undo_stack empty?) then (yes)
+    :Return false;
+    stop
+  else (no)
+    :Pop action from _undo_stack;
+
+    if (action == add?) then (yes)
+      :Remove the transaction from the HashTable,
+      both BSTs, and the doubly linked list;
+      :Subtract it from the corresponding income or expense total;
+    elseif (action == remove?) then (yes)
+      :Restore the transaction to the HashTable,
+      both BSTs, and the doubly linked list;
+      :Restore the corresponding income or expense total;
+    else (update)
+      :Find the transaction by transaction_id;
+      :Restore old_values;
+    endif
+
+    :Push action onto _redo_stack;
+    :Return true;
+    stop
+  endif
+
+else (redo)
+  if (_redo_stack empty?) then (yes)
+    :Return false;
+    stop
+  else (no)
+    :Pop action from _redo_stack;
+
+    if (action == add?) then (yes)
+      :Reinsert the transaction into every index;
+      :Restore the corresponding income or expense total;
+    elseif (action == remove?) then (yes)
+      :Remove the transaction from every index again;
+      :Subtract it from the corresponding income or expense total;
+    else (update)
+      :Find the transaction by transaction_id;
+      :Apply new_values from the action;
+      note right
+        The current update operation stores old_values in the action
+        but does not store new_values. With the current action data,
+        redoing an update may not restore the modified values.
+      end note
+    endif
+
+    :Push action onto _undo_stack;
+    :Return true;
+    stop
+  endif
+endif
+
+@enduml
+

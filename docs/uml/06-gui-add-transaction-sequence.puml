@@ -1,0 +1,84 @@
+@startuml
+title GUI Add Transaction and Persist to Shared SQLite - Sequence Diagram
+
+skinparam shadowing false
+autonumber
+
+actor "Personal User" as User
+boundary "FinanceApp" as GUI
+entity "Transaction" as Transaction
+control "TransactionManager" as Manager
+control "BudgetManager" as BudgetManager
+control "FinanceApplicationState" as State
+control "StorageManager" as Storage
+control "SQLiteStorage" as SQLiteStorage
+database "finance_tracker.db" as Database
+
+User -> GUI : Enter type, amount, category, date, etc.\nClick Add record
+GUI -> GUI : Validate the form and convert Decimal/datetime
+
+create Transaction
+GUI -> Transaction : Transaction(...)
+activate Transaction
+Transaction -> Transaction : Validate amount/type/category/account/date\nthrough property setters
+Transaction --> GUI : Created transaction object
+deactivate Transaction
+
+GUI -> Manager : add(transaction)
+activate Manager
+Manager -> Manager : Validate unique ID
+Manager -> Manager : Update hash table, amount/date trees,\ninsertion-order list, totals, and undo/redo stacks
+Manager --> GUI : Completed
+deactivate Manager
+
+GUI -> State : save()
+activate State
+State -> Manager : to_dict()
+loop For each transaction
+  Manager -> Transaction : to_dict()
+  Transaction --> Manager : storage-neutral dict
+end
+Manager --> State : transactions + statistics
+State -> BudgetManager : to_dict()
+BudgetManager --> State : monthly and category budgets
+State -> State : Build one snapshot with expected revision
+
+State -> Storage : save_data(snapshot)
+Storage -> SQLiteStorage : save(snapshot)
+activate SQLiteStorage
+SQLiteStorage -> Database : BEGIN IMMEDIATE
+SQLiteStorage -> Database : Read current revision
+alt Expected revision matches
+  SQLiteStorage -> Database : Replace transaction rows
+  SQLiteStorage -> Database : Replace budget rows
+  SQLiteStorage -> Database : Increment revision and COMMIT
+  Database --> SQLiteStorage : committed
+  SQLiteStorage --> Storage : success + new revision
+  Storage --> State : true
+  State --> GUI : true
+else Another process saved first
+  SQLiteStorage -> Database : ROLLBACK
+  SQLiteStorage --> Storage : StorageError
+  Storage --> State : false
+  State --> GUI : false
+  GUI -> State : reload()
+  State -> Storage : load_data()
+  Storage -> SQLiteStorage : load()
+  SQLiteStorage -> Database : Read latest transactions, budgets, and revision
+  Database --> SQLiteStorage : current snapshot
+  SQLiteStorage --> Storage : snapshot
+  Storage --> State : snapshot
+  State -> Manager : from_dict(snapshot)
+  State -> BudgetManager : from_dict(snapshot.budgets)
+  GUI --> User : Explain conflict and show reloaded data
+end
+deactivate SQLiteStorage
+deactivate State
+
+opt Save succeeded
+  GUI -> GUI : Refresh the list, summary, category filter,\nundo/redo buttons, and open dashboard
+  GUI --> User : Display success message
+end
+
+@enduml
+

@@ -1,0 +1,94 @@
+@startuml
+title Finance Management Platform - GUI Use Cases
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Personal User" as PersonalUser
+actor "Household Member" as HouseholdUser
+actor "Company Finance User" as BusinessUser
+
+rectangle "Finance Management Platform" {
+  package "Current Personal Finance GUI" {
+    usecase "Use Packaged GUI" as GUI
+    usecase "Add Transaction" as UCAdd
+    usecase "Delete Transaction" as UCDelete
+    usecase "Search / Filter Transactions" as UCSearch
+    usecase "Sort and List Transactions" as UCList
+    usecase "View Financial Statistics" as UCStats
+    usecase "Undo / Redo" as UCUndo
+    usecase "View Visual Dashboard" as UCDashboard
+    usecase "Persist Shared SQLite State" as UCSave
+    usecase "Load Shared SQLite State" as UCLoad
+  }
+
+  package "Planned Household Finance GUI" {
+    usecase "Use Household GUI" as HouseholdGUI <<planned>>
+    usecase "Create Household Ledger" as UCHouseholdLedger <<planned>>
+    usecase "Record Household\nIncome and Expenses" as UCHouseholdTransactions <<planned>>
+    usecase "Manage Shared Household\nBudgets and Savings Goals" as UCHouseholdBudget <<planned>>
+    usecase "View Household Reports" as UCHouseholdReports <<planned>>
+  }
+
+  package "Planned Business Finance GUI" {
+    usecase "Use Company Finance GUI" as BusinessGUI <<planned>>
+    usecase "Create Company Ledger" as UCCompanyLedger <<planned>>
+    usecase "Record Company Cash Flow" as UCCompanyCashFlow <<planned>>
+    usecase "Categorize Business\nIncome and Expenses" as UCCompanyCategories <<planned>>
+    usecase "Track Receivables\nand Payables" as UCReceivables <<planned>>
+    usecase "View Cash-Flow and\nProfit Reports" as UCCompanyReports <<planned>>
+  }
+}
+
+PersonalUser --> GUI
+GUI --> UCAdd
+GUI --> UCDelete
+GUI --> UCSearch
+GUI --> UCList
+GUI --> UCStats
+GUI --> UCUndo
+GUI --> UCDashboard
+
+UCAdd ..> UCSave : <<include>>
+UCDelete ..> UCSave : <<include>>
+UCSearch ..> UCLoad : <<include>>
+UCStats ..> UCLoad : <<include>>
+UCList ..> UCLoad : <<include>>
+UCDashboard ..> UCLoad : <<include>>
+
+HouseholdUser --> HouseholdGUI
+HouseholdGUI --> UCHouseholdLedger
+HouseholdGUI --> UCHouseholdTransactions
+HouseholdGUI --> UCHouseholdBudget
+HouseholdGUI --> UCHouseholdReports
+UCHouseholdTransactions ..> UCHouseholdLedger : <<include>>
+UCHouseholdBudget ..> UCHouseholdLedger : <<include>>
+UCHouseholdReports ..> UCHouseholdLedger : <<include>>
+
+BusinessUser --> BusinessGUI
+BusinessGUI --> UCCompanyLedger
+BusinessGUI --> UCCompanyCashFlow
+BusinessGUI --> UCCompanyCategories
+BusinessGUI --> UCReceivables
+BusinessGUI --> UCCompanyReports
+UCCompanyCashFlow ..> UCCompanyLedger : <<include>>
+UCCompanyCategories ..> UCCompanyLedger : <<include>>
+UCReceivables ..> UCCompanyLedger : <<include>>
+UCCompanyReports ..> UCCompanyLedger : <<include>>
+
+note right of GUI
+  The packaged delivery exposes this graphical interface only.
+end note
+
+note right of UCDashboard
+  Supports the latest 6 months, latest 12 months,
+  and the complete date range.
+end note
+
+note bottom of UCHouseholdBudget
+  Household and business use cases describe the long-term product direction.
+  They are not implemented in the current release.
+end note
+
+@enduml

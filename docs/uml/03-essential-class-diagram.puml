@@ -1,0 +1,113 @@
+@startuml
+allowmixing
+title Finance Management Platform - Essential GUI Class Diagram
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+hide empty members
+
+package "GUI" {
+  class FinanceApp <<packaged GUI>> {
+    - state: FinanceApplicationState
+    - dashboard: FinanceDashboard?
+    + add_transaction()
+    + delete_selected()
+    + undo_action()
+    + redo_action()
+    + open_dashboard()
+  }
+
+  class FinanceDashboard <<visualization>> {
+    + refresh()
+    + is_open(): bool
+  }
+}
+
+package "Core Business" {
+  class FinanceApplicationState {
+    - _storage_revision: int
+    + load(): bool
+    + save(): bool
+    + reload(): bool
+  }
+
+  class TransactionManager {
+    + add(transaction)
+    + remove(transaction_id): bool
+    + find_all(): List
+    + undo(): bool
+    + redo(): bool
+  }
+
+  class BudgetManager {
+    + set_monthly_budget(year, month, amount)
+    + set_category_budget(category, year, month, amount): Budget
+    + get_budget_summary(year, month): Dict
+  }
+
+  class DashboardAnalytics <<module>> {
+    + build_dashboard_data(transactions, months): DashboardData
+  }
+}
+
+package "Domain" {
+  class Transaction {
+    + transaction_id: str
+    + amount: Decimal
+    + transaction_type: TransactionType
+    + category: str
+    + transaction_date: datetime
+  }
+
+  class Budget <<dataclass>> {
+    + category: str
+    + amount: Decimal
+    + spent: Decimal
+    + remaining: Decimal
+  }
+
+  class DashboardData <<dataclass>> {
+    + total_income: Decimal
+    + total_expense: Decimal
+    + balance: Decimal
+    + monthly_totals: Sequence
+    + balance_trend: Sequence
+  }
+}
+
+package "SQLite Persistence" {
+  class StorageManager {
+    + save_data(data): bool
+    + load_data(): dict?
+  }
+
+  class SQLiteStorage {
+    - _filepath: str
+    - _revision: int
+    + save(data)
+    + load(): dict?
+  }
+}
+
+database "Shared finance_tracker.db" as Ledger
+
+FinanceApp *-- FinanceApplicationState
+FinanceApp o-- "0..1" FinanceDashboard
+
+FinanceApplicationState *-- TransactionManager
+FinanceApplicationState *-- BudgetManager
+FinanceApplicationState *-- StorageManager
+
+TransactionManager *-- "0..*" Transaction
+BudgetManager *-- "0..*" Budget
+
+FinanceDashboard ..> DashboardAnalytics
+DashboardAnalytics ..> Transaction
+DashboardAnalytics ..> DashboardData : creates
+
+StorageManager *-- SQLiteStorage
+SQLiteStorage --> Ledger : atomic read/write
+
+@enduml

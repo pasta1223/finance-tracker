@@ -1,0 +1,58 @@
+@startuml
+title Dashboard Creation, Aggregation, and Refresh - Sequence Diagram
+
+skinparam shadowing false
+autonumber
+
+actor "Personal User" as User
+boundary "FinanceApp" as GUI
+boundary "FinanceDashboard" as Dashboard
+control "TransactionManager" as Manager
+control "analytics.py" as Analytics
+entity "DashboardData" as Data
+participant "Matplotlib Figure/Canvas" as Chart
+
+User -> GUI : Click Dashboard
+
+alt Dashboard is already open
+  GUI -> Dashboard : refresh()
+  GUI -> Dashboard : focus()
+else Dashboard has not been created
+  GUI -> GUI : Lazily import FinanceDashboard
+  create Dashboard
+  GUI -> Dashboard : FinanceDashboard(root, manager.find_all)
+  Dashboard -> Dashboard : Build the header, KPI cards, and chart area
+  Dashboard -> Dashboard : refresh()
+end
+
+activate Dashboard
+Dashboard -> Manager : transaction_provider() / find_all()
+Manager --> Dashboard : List[Transaction]
+Dashboard -> Dashboard : Map the selected range to 6, 12, or None
+Dashboard -> Analytics : build_dashboard_data(transactions, months)
+activate Analytics
+Analytics -> Analytics : Filter calendar months and sort by date
+Analytics -> Analytics : Aggregate income, expenses, categories,\nmonthly totals, and running balance
+create Data
+Analytics -> Data : DashboardData(...)
+Data --> Analytics : immutable result
+Analytics --> Dashboard : DashboardData
+deactivate Analytics
+
+Dashboard -> Dashboard : Update income, expense, balance, and count KPIs
+Dashboard -> Chart : Clear and draw monthly totals,\ncategory expenses, and balance trend
+Chart --> Dashboard : draw_idle()
+deactivate Dashboard
+
+opt Transactions change while the dashboard remains open
+  GUI -> Dashboard : refresh()
+  note right of Dashboard
+    Retrieve the latest transactions through the provider,
+    then repeat aggregation and rendering.
+  end note
+end
+
+Dashboard --> User : Display the interactive financial dashboard
+
+@enduml
+

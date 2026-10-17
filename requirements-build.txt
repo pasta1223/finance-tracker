@@ -1,0 +1,5 @@
+-r requirements.txt
+# The packaged dashboard was verified with PyInstaller 6.22.3 and hooks 2026.8.
+# Older PyInstaller releases can miss modules required by NumPy 2.4.
+pyinstaller>=6.22.3
+pyinstaller-hooks-contrib>=2026.8

@@ -1,0 +1,164 @@
+@startuml
+title TransactionManager and Custom Data Structures - Supplementary Class Diagram
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+hide empty members
+
+class TransactionManager {
+  - _by_id: HashTable
+  - _by_amount: BinarySearchTree
+  - _by_date: BinarySearchTree
+  - _by_insertion_order: DoublyLinkedList
+  - _category_tree: GeneralTree
+  - _undo_stack: Stack
+  - _redo_stack: Stack
+}
+
+class Transaction {
+  + transaction_id: str
+  + amount: Decimal
+  + transaction_date: datetime
+}
+
+class DataStructureError <<custom exception>>
+
+package "Hash Index" {
+  class HashTable {
+    - _capacity: int
+    - _size: int
+    - _buckets: List
+    + put(key, value)
+    + get(key): T?
+    + remove(key): bool
+    + contains_key(key): bool
+    + clear()
+  }
+
+  class HashNode {
+    + key: str
+    + value: T
+    + next: HashNode?
+  }
+}
+
+package "Sorted Indexes" {
+  class BinarySearchTree {
+    - _root: BSTNode?
+    - _size: int
+    - _key_func: Callable
+    + insert(data)
+    + find(key): T?
+    + delete(key): bool
+    + range_query(min, max): List
+    + inorder_traversal(): Iterator
+  }
+
+  class BSTNode {
+    + data: T
+    + left: BSTNode?
+    + right: BSTNode?
+    - _height: int
+  }
+}
+
+package "Insertion Order" {
+  class DoublyLinkedList {
+    - _head: Node?
+    - _tail: Node?
+    - _size: int
+    + append(data)
+    + remove(data): bool
+    + find_all(predicate): List
+    + to_list(): List
+    + clear()
+  }
+
+  class Node {
+    + data: T
+    + prev: Node?
+    + next: Node?
+  }
+}
+
+package "Operation History" {
+  class Stack {
+    - _items: List
+    + push(item)
+    + pop(): T
+    + peek(): T
+    + clear()
+  }
+
+  class Queue {
+    - _items: List
+    - _front_index: int
+    + enqueue(item)
+    + dequeue(): T
+    + front(): T
+    + rear(): T
+  }
+}
+
+package "Category Hierarchy" {
+  class GeneralTree {
+    - _root: TreeNode?
+    - _size: int
+    + set_root(data): TreeNode
+    + find(predicate): TreeNode?
+    + preorder_traversal(): Iterator
+    + levelorder_traversal(): Iterator
+  }
+
+  class TreeNode {
+    + data: T
+    + parent: TreeNode?
+    + children: List
+    - _depth: int
+    + add_child(data): TreeNode
+    + remove_child(data): bool
+  }
+}
+
+TransactionManager *-- "1" HashTable : ID index
+TransactionManager *-- "2" BinarySearchTree : amount index / date index
+TransactionManager *-- "1" DoublyLinkedList : insertion order
+TransactionManager *-- "2" Stack : undo / redo
+TransactionManager *-- "1" GeneralTree : category hierarchy
+TransactionManager --> "0..*" Transaction : same objects referenced by multiple indexes
+
+HashTable *-- "0..*" HashNode : buckets
+HashNode --> "0..1" HashNode : next
+HashNode --> Transaction : value
+
+BinarySearchTree *-- "0..*" BSTNode
+BSTNode --> "0..2" BSTNode : left / right
+BSTNode --> Transaction : data
+
+DoublyLinkedList *-- "0..*" Node
+Node --> "0..2" Node : prev / next
+Node --> Transaction : data
+
+GeneralTree *-- "0..*" TreeNode
+TreeNode *-- "0..*" TreeNode : children
+
+HashTable ..> DataStructureError : raises
+DoublyLinkedList ..> DataStructureError : raises
+Stack ..> DataStructureError : raises
+Queue ..> DataStructureError : raises
+GeneralTree ..> DataStructureError : raises
+
+note bottom of Queue
+  Queue is implemented and imported by transaction_manager.py,
+  but TransactionManager does not currently instantiate it.
+end note
+
+note bottom of TransactionManager
+  add/remove/undo/redo must keep every index and aggregate value synchronized.
+  Each Stack stores Dict objects that describe operations.
+end note
+
+@enduml
+

@@ -1,0 +1,73 @@
+@startuml
+title Finance Management Platform - GUI Component Diagram
+
+left to right direction
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Personal User" as PersonalUser
+actor "Household Member" as HouseholdUser <<planned>>
+actor "Company Finance User" as BusinessUser <<planned>>
+
+package "GUI Layer" {
+  [gui.py\nFinanceApp\nPackaged GUI] as GUI
+  [FinanceDashboard] as Dashboard
+}
+
+package "Core Business Layer" {
+  [Shared Application State\nFinanceApplicationState] as AppState
+  [Transaction Service\nTransactionManager] as Transactions
+  [Budget Service\nBudgetManager] as Budgets
+  [Dashboard Analytics\nbuild_dashboard_data] as Analytics
+}
+
+package "Persistence Layer" {
+  [Storage Facade\nStorageManager] as Storage
+  [SQLite Storage\nSQLiteStorage] as SQLiteStorage
+  [Custom Data Structures] as Structures
+}
+
+package "Domain Models" {
+  [Transaction] as Transaction
+  [Category] as Category
+  [Budget] as Budget
+  [DashboardData] as DashboardData
+}
+
+database "Shared data/finance_tracker.db\n(SQLite)" as Ledger
+
+PersonalUser --> GUI : Current packaged GUI
+HouseholdUser ..> GUI : Future household GUI <<planned>>
+BusinessUser ..> GUI : Future company-finance GUI <<planned>>
+
+GUI --> AppState : Load and save shared state
+GUI --> Dashboard : Lazy creation
+
+AppState --> Transactions
+AppState --> Budgets
+AppState --> Storage
+
+Dashboard --> Analytics
+Analytics --> DashboardData
+Analytics --> Transaction
+
+Transactions --> Transaction
+Transactions --> Category
+Transactions --> Structures
+Budgets --> Budget
+
+Storage --> SQLiteStorage
+SQLiteStorage --> Ledger : Atomic transactions and revision checks
+
+note bottom of GUI
+  This is the only interface exposed by the packaged application.
+  Household and company-finance GUI capabilities are planned.
+end note
+
+note bottom of AppState
+  Transactions and budgets are serialized as one complete state
+  and committed to the shared SQLite database together.
+end note
+
+@enduml

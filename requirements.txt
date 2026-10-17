@@ -1,0 +1,2 @@
+# GUI dashboard dependency. Tkinter and the CLI use the Python standard library.
+matplotlib>=3.8

@@ -1,0 +1,34 @@
+# Python bytecode and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# IDE and local tooling state
+.idea/
+.vscode/
+
+# Runtime data and logs (may contain private financial information)
+*.db
+*.db-shm
+*.db-wal
+*.log
+data/*
+!data/.gitkeep
+
+# Local secrets
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Build outputs; publish the EXE separately as a GitHub Release asset
+build/
+dist/
+
+# Test and coverage caches
+.coverage
+htmlcov/
+.pytest_cache/

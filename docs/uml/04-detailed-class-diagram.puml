@@ -1,0 +1,211 @@
+@startuml
+allowmixing
+title Finance Management Platform - Detailed GUI Class Diagram
+
+top to bottom direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+hide empty members
+
+package "GUI Layer" {
+  class FinanceApp <<packaged Tkinter GUI>> {
+    - root
+    - state: FinanceApplicationState
+    - manager: TransactionManager
+    - dashboard: FinanceDashboard?
+    + add_transaction()
+    + delete_selected()
+    + refresh_transaction_list()
+    + update_summary()
+    + undo_action()
+    + redo_action()
+    + open_dashboard()
+  }
+
+  class FinanceDashboard <<Tkinter/Matplotlib>> {
+    - _transaction_provider: Callable
+    - window
+    - figure
+    - canvas
+    + refresh()
+    + is_open(): bool
+    + focus()
+    + close()
+  }
+}
+
+package "Domain Models" {
+  enum TransactionType {
+    INCOME
+    EXPENSE
+    TRANSFER
+  }
+
+  class Transaction {
+    - _transaction_id: str
+    - _amount: Decimal
+    - _transaction_type: TransactionType
+    - _category: str
+    - _description: str
+    - _account: str
+    - _transaction_date: datetime
+    - _created_at: datetime
+    + get_signed_amount(): Decimal
+    + update(kwargs)
+    + to_dict(): dict
+    + from_dict(data): Transaction
+  }
+
+  class Category {
+    - _name: str
+    - _category_type: str
+    + description: str
+    + parent: Category?
+    + budget_limit: Decimal?
+    - _subcategories: List
+    + full_path: str
+    + add_subcategory(category)
+    + remove_subcategory(category): bool
+    + get_all_subcategories(): List
+    + to_dict(): dict
+  }
+
+  class Budget <<dataclass>> {
+    + category: str
+    + amount: Decimal
+    + month: int
+    + year: int
+    + spent: Decimal
+    + remaining: Decimal
+    + usage_percentage: float
+    + is_exceeded: bool
+  }
+
+  class DashboardData <<frozen dataclass>> {
+    + transactions: Sequence
+    + total_income: Decimal
+    + total_expense: Decimal
+    + balance: Decimal
+    + category_expenses: Sequence
+    + monthly_totals: Sequence
+    + balance_trend: Sequence
+    + transaction_count: int
+  }
+}
+
+package "Business Services" {
+  class FinanceApplicationState {
+    {static} + SCHEMA_VERSION: int
+    + storage: StorageManager
+    + transaction_manager: TransactionManager
+    + budget_manager: BudgetManager
+    - _storage_revision: int
+    + load(): bool
+    + save(): bool
+    + reload(): bool
+    + to_dict(): dict
+  }
+
+  class TransactionManager {
+    - _by_id: HashTable
+    - _by_amount: BinarySearchTree
+    - _by_date: BinarySearchTree
+    - _by_insertion_order: DoublyLinkedList
+    - _category_tree: GeneralTree
+    - _undo_stack: Stack
+    - _redo_stack: Stack
+    - _total_income: Decimal
+    - _total_expense: Decimal
+    + add(transaction)
+    + remove(transaction_id): bool
+    + update(transaction_id, kwargs)
+    + find_by_id(transaction_id): Transaction?
+    + find_all(): List
+    + get_sorted_by_amount(descending): List
+    + get_sorted_by_date(descending): List
+    + get_monthly_statistics(year, month): dict
+    + undo(): bool
+    + redo(): bool
+    + to_dict(): dict
+    + from_dict(data)
+  }
+
+  class BudgetManager {
+    - _category_budgets: Dict
+    - _monthly_budgets: Dict
+    - _alert_threshold: float
+    + set_monthly_budget(year, month, amount)
+    + set_category_budget(category, year, month, amount): Budget
+    + add_category_spending(category, year, month, amount)
+    + check_budget_alerts(year, month, spending): List
+    + get_budget_summary(year, month): Dict
+    + to_dict(): Dict
+    + from_dict(data)
+  }
+
+  class Analytics <<module>> {
+    + build_dashboard_data(transactions, months): DashboardData
+  }
+}
+
+package "SQLite Persistence" {
+  abstract class StorageBackend {
+    {abstract} + save(data)
+    {abstract} + load(): dict?
+    {abstract} + exists(): bool
+    {abstract} + clear()
+  }
+
+  class SQLiteStorage {
+    {static} + SCHEMA_VERSION: str
+    - _filepath: str
+    - _timeout: float
+    - _revision: int
+    + revision: int
+    + save(data)
+    + load(): dict?
+    + exists(): bool
+    + clear()
+    + get_metadata(): dict
+  }
+
+  class StorageManager {
+    - _storage: StorageBackend
+    - _is_loaded: bool
+    - _data: dict?
+    + save_data(data): bool
+    + load_data(): dict?
+    + has_data(): bool
+    + get_metadata(): dict
+    + clear_storage(): bool
+  }
+
+}
+
+database "Shared finance_tracker.db" as Ledger
+
+SQLiteStorage --|> StorageBackend
+FinanceApp *-- FinanceApplicationState
+FinanceApp o-- "0..1" FinanceDashboard
+
+FinanceApplicationState *-- TransactionManager
+FinanceApplicationState *-- BudgetManager
+FinanceApplicationState *-- StorageManager
+FinanceDashboard ..> Analytics
+FinanceDashboard ..> Transaction : provider callback
+Analytics ..> Transaction
+Analytics ..> DashboardData : creates
+DashboardData o-- "0..*" Transaction
+
+TransactionManager *-- "0..*" Transaction : indexed records
+TransactionManager ..> Category : creates
+Transaction --> TransactionType
+Category "0..1 parent" <-- "0..* children" Category
+BudgetManager *-- "0..*" Budget
+
+StorageManager *-- SQLiteStorage
+SQLiteStorage --> Ledger : atomic read/write
+
+@enduml
+
