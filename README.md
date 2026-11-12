@@ -2,16 +2,6 @@
 
 当前版本：**1.3.0**。Python + Tkinter 桌面应用，使用 SQLite 保存账号、收支和预算，使用 Matplotlib 绘制 Dashboard。
 
-## 启动
-
-```powershell
-cd E:\PythonProject\finance_tracker
-python -m pip install -r requirements.txt
-python gui.py
-```
-
-当前直接从源码运行。若 `python` 指向 Windows 应用商店，可使用本机实际解释器，例如 `E:\Anaconda3\envs\ypr\python.exe gui.py`。
-
 ## 登录与使用
 
 启动后先选择 **个人 / 家庭 / 小商铺**。首次使用选择“注册账号”（家庭选择“创建家庭”），设置账号和密码；以后选择“登录”。密码为 8–128 个字符，可在登录后的“修改密码”中凭原密码修改，改密后需重新登录。
@@ -38,8 +28,6 @@ data/
 
 个人 A 与 B 的收支存于不同文件；同一家庭的不同成员共用一个文件，不同家庭的账本相互隔离。密码使用随机盐和 PBKDF2-HMAC-SHA256，邀请码仅存哈希。登录界面不提供列出其他账号或打开其他账本的入口。
 
-2026-11-12 按要求删除了账号功能启用前的 9 条旧收支记录，原数据库保留应用配置。账号功能启用后的账号与账本数据保持不变，新注册账号从空账本开始。完整备份时请复制整个 `data` 目录（关闭程序后复制）。
-
 可用 `FINANCE_TRACKER_DATA_DIR` 指定数据目录，或用 `FINANCE_TRACKER_DB_PATH` 指定基础数据库位置；账号库和账本目录从该位置派生。例如基础路径 `D:\finance\demo.db` 对应 `demo_accounts.db` 和 `demo_ledgers/`。GUI 与 CLI 按相同规则定位同一账号账本。
 
 这是本地桌面版本：家庭共享针对同一套数据目录中的家庭账号；没有跨设备云同步或网络登录服务。商铺板块目前管理经营收支和现金流，库存、应收应付等能力仍属后续扩展。
@@ -56,6 +44,5 @@ python -m unittest discover -s tests -q
 
 `--list`、`--stat`、`--export` 等账本命令先选择登录类型并输入账号密码。`--help`、`--version` 和全局应用配置选项不访问用户账本。测试使用临时数据目录；界面测试实际创建 Tk 窗口、绘制 Matplotlib 图表，需要可用的桌面环境。
 
-现有测试源码保留，按需运行。当前阶段暂不开展打包验收，打包配置、依赖清单、构建产物及临时验证代码已移除。
 
-`CHANGELOG.md` 记录版本变更，`PROGRESS.md` 记录当前进度，`REQUIREMENTS.md` 为验收要求，`docs/ACCOUNTS.md` 说明账号边界；`docs/uml` 保留 1.2.0 的设计源文件，重复生成的图片和归档已清理。
+`CHANGELOG.md` 记录版本变更，`PROGRESS.md` 记录当前进度，`REQUIREMENTS.md` 为验收要求。
