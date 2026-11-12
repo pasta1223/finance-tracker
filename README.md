@@ -16,20 +16,6 @@
 
 ## 数据存储
 
-默认数据目录为项目中的 `data`：
-
-```text
-data/
-  finance_tracker.db                 # 应用配置；账号功能启用前的旧收支已清空
-  finance_tracker_accounts.db        # 账号、成员、密码哈希和邀请码哈希
-  finance_tracker_ledgers/
-    <个人或家庭或商铺的内部ID>.db     # 每个账号/家庭/商铺单独的交易和预算
-```
-
-个人 A 与 B 的收支存于不同文件；同一家庭的不同成员共用一个文件，不同家庭的账本相互隔离。密码使用随机盐和 PBKDF2-HMAC-SHA256，邀请码仅存哈希。登录界面不提供列出其他账号或打开其他账本的入口。
-
-可用 `FINANCE_TRACKER_DATA_DIR` 指定数据目录，或用 `FINANCE_TRACKER_DB_PATH` 指定基础数据库位置；账号库和账本目录从该位置派生。例如基础路径 `D:\finance\demo.db` 对应 `demo_accounts.db` 和 `demo_ledgers/`。GUI 与 CLI 按相同规则定位同一账号账本。
-
 这是本地桌面版本：家庭共享针对同一套数据目录中的家庭账号；没有跨设备云同步或网络登录服务。商铺板块目前管理经营收支和现金流，库存、应收应付等能力仍属后续扩展。
 
 ## 开发
