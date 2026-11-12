@@ -78,7 +78,7 @@ UCReceivables ..> UCCompanyLedger : <<include>>
 UCCompanyReports ..> UCCompanyLedger : <<include>>
 
 note right of GUI
-  The packaged delivery exposes this graphical interface only.
+  End users access this graphical interface.
 end note
 
 note right of UCDashboard

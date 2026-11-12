@@ -37,7 +37,7 @@ package "Domain Models" {
 
 database "Shared data/finance_tracker.db\n(SQLite)" as Ledger
 
-PersonalUser --> GUI : Current packaged GUI
+PersonalUser --> GUI : Desktop GUI
 HouseholdUser ..> GUI : Future household GUI <<planned>>
 BusinessUser ..> GUI : Future company-finance GUI <<planned>>
 
@@ -61,7 +61,7 @@ Storage --> SQLiteStorage
 SQLiteStorage --> Ledger : Atomic transactions and revision checks
 
 note bottom of GUI
-  This is the only interface exposed by the packaged application.
+  This is the primary interface for end users.
   Household and company-finance GUI capabilities are planned.
 end note
 

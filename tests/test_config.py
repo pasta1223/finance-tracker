@@ -9,6 +9,7 @@ import shutil
 import sqlite3
 
 from src.core.config import ConfigManager, AppConfig
+from src.version import APP_VERSION
 
 
 class TestAppConfig(unittest.TestCase):
@@ -18,7 +19,7 @@ class TestAppConfig(unittest.TestCase):
         """测试默认值"""
         config = AppConfig()
         self.assertEqual(config.app_name, "个人财务跟踪系统")
-        self.assertEqual(config.app_version, "1.2.0")
+        self.assertEqual(config.app_version, APP_VERSION)
         self.assertTrue(config.auto_save)
     
     def test_to_dict(self):
@@ -100,7 +101,7 @@ class TestConfigManager(unittest.TestCase):
 
         reloaded = ConfigManager(self.database_path)
 
-        self.assertEqual(reloaded.get('app_version'), '1.2.0')
+        self.assertEqual(reloaded.get('app_version'), APP_VERSION)
 
 
 if __name__ == '__main__':

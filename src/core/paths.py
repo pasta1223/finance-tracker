@@ -1,7 +1,6 @@
 """Stable application paths shared by the GUI and CLI entry points."""
 
 import os
-import sys
 from pathlib import Path
 
 
@@ -13,8 +12,6 @@ def get_app_data_directory() -> Path:
     explicit_directory = os.environ.get("FINANCE_TRACKER_DATA_DIR")
     if explicit_directory:
         directory = Path(explicit_directory).expanduser().resolve()
-    elif getattr(sys, "frozen", False):
-        directory = Path(sys.executable).resolve().parent / "data"
     else:
         directory = Path(__file__).resolve().parents[2] / "data"
 

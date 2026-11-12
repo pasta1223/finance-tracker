@@ -6,6 +6,7 @@ CLI用户界面模块
 
 import os
 import sys
+from pathlib import Path
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
@@ -25,10 +26,13 @@ if __name__ == "__main__" and not __package__:
     raise SystemExit(run_cli())
 
 from ..models.transaction import Transaction, TransactionType
-from ..services.application_state import FinanceApplicationState
 from ..export.exporter import ExportManager
 from ..exceptions.custom_exceptions import FinanceTrackerError, ValidationError, NotFoundError
 from ..version import APP_VERSION
+from .cli_login import authenticate_cli
+from ..services.workspaces import PROFILES
+from ..services.auth_service import AuthenticationError
+from ..core.logger import Logger
 
 
 class FinanceCLI:
@@ -45,7 +49,16 @@ class FinanceCLI:
         )
         
         # GUI and CLI share the same state serialization and SQLite backend.
-        self._state = state or FinanceApplicationState()
+        self._state = state if state is not None else authenticate_cli()
+        if self._state.session and isinstance(logger, Logger):
+            # Financial diagnostics belong beside the current ledger, never
+            # in the shared startup log. A separate logger name avoids reuse.
+            self._logger = Logger(
+                name=f"FinanceLedger_{self._state.session.workspace_id}",
+                log_file=str(Path(self._state.storage_path).with_suffix(".log")),
+                level=logger._level,
+            )
+            self._logger._logger.propagate = False
         self._storage = self._state.storage
         self._manager = self._state.transaction_manager
         self._budget_manager = self._state.budget_manager
@@ -58,6 +71,9 @@ class FinanceCLI:
             "income": ["工资", "奖金", "投资收益", "兼职", "其他收入"],
             "expense": ["餐饮", "交通", "购物", "住房", "医疗", "教育", "娱乐", "通讯", "其他支出"]
         }
+        if self._state.session:
+            profile = PROFILES[self._state.session.kind]
+            self._default_categories = {"income": profile["income_categories"], "expense": profile["expense_categories"]}
         
         # 导出管理器
         self._export_manager = ExportManager()
@@ -99,6 +115,7 @@ class FinanceCLI:
         
         while True:
             try:
+                self._state._authorize()
                 self._print_menu()
                 choice = input("\n请选择操作 [1-9]: ").strip()
                 
@@ -127,6 +144,9 @@ class FinanceCLI:
             except KeyboardInterrupt:
                 print("\n\n[提示] 按 Ctrl+C 退出程序")
                 self._exit_program()
+                break
+            except AuthenticationError as e:
+                print(f"[错误] {e.message}")
                 break
             except FinanceTrackerError as e:
                 print(f"[错误] {e.message}")
@@ -650,6 +670,7 @@ class FinanceCLI:
     
     def export_data(self, filepath: str, format_type: str = 'csv') -> bool:
         """导出数据"""
+        self._state._authorize()
         transactions = self._manager.get_sorted_by_date(descending=True)
         
         if not transactions:

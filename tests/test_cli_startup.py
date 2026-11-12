@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, Mock, patch
 from main import main
 from src.core.arguments import ArgumentParser
 from src.core.logger import LogLevel
+from src.version import APP_VERSION
 
 
 class TestCLIStartup(unittest.TestCase):
@@ -25,7 +26,7 @@ class TestCLIStartup(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("finance-tracker v1.2.0", result.stdout)
+        self.assertIn(f"finance-tracker v{APP_VERSION}", result.stdout)
 
     def test_stat_argument_is_preserved(self):
         args = ArgumentParser().parse(["--stat"])

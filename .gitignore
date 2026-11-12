@@ -24,9 +24,13 @@ data/*
 *.pfx
 *.p12
 
-# Build outputs; publish the EXE separately as a GitHub Release asset
+# Generated artifacts
 build/
 dist/
+docs/uml/rendered/
+docs/uml/*.png
+docs/uml/*.svg
+docs/uml/*.zip
 
 # Test and coverage caches
 .coverage

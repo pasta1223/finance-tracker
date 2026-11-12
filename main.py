@@ -2,7 +2,7 @@
 个人财务跟踪系统 - 主程序入口
 功能完整、可持久化存储的Python软件系统
 作者：Finance Tracker Team
-版本：1.2.0
+版本：1.3.0
 """
 
 import sys
@@ -15,10 +15,12 @@ from src.core import (
     ConfigManager,
     ArgumentParser,
     LogLevel,
+    Logger,
     init_logger,
     get_database_path,
 )
 from src.ui.cli import FinanceCLI
+from src.exceptions.custom_exceptions import FinanceTrackerError
 
 
 def configure_console_encoding() -> None:
@@ -87,7 +89,14 @@ def main():
     logger.info("=" * 50)
     
     # 创建应用实例
-    app = FinanceCLI(config=config, logger=logger, quiet=args.quiet)
+    try:
+        app = FinanceCLI(config=config, logger=logger, quiet=args.quiet)
+    except (FinanceTrackerError, EOFError, KeyboardInterrupt) as error:
+        print(f"[错误] 未能登录: {error}")
+        return 1
+    account_logger = getattr(app, "_logger", None)
+    if isinstance(account_logger, Logger):
+        logger = account_logger
     
     # 命令行模式
     if args.add_transaction or args.list_transactions or args.search or args.export or getattr(args, 'stat', False):
@@ -109,6 +118,7 @@ def main():
 def run_command_mode(app: FinanceCLI, args, logger) -> int:
     """命令行模式执行"""
     try:
+        app._state._authorize()
         # 添加交易记录
         if args.add_transaction:
             logger.info("命令行模式: 添加交易")

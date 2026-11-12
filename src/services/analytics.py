@@ -130,3 +130,15 @@ def build_dashboard_data(
         monthly_totals=tuple(monthly_totals),
         balance_trend=tuple(balance_trend),
     )
+
+
+def build_member_totals(transactions):
+    """Group by stable member ID, retaining names for display only."""
+    totals = {}
+    for item in transactions:
+        row = totals.setdefault(item.author_id, [item.author_name or "历史记录", Decimal(0), Decimal(0)])
+        if item.transaction_type == TransactionType.INCOME:
+            row[1] += item.amount
+        elif item.transaction_type == TransactionType.EXPENSE:
+            row[2] += item.amount
+    return tuple((key, *values) for key, values in sorted(totals.items()))

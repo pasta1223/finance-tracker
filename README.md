@@ -1,14 +1,8 @@
-# 个人财务跟踪系统
+﻿# 财务管理系统
 
-当前版本：**1.2.0**。
+当前版本：**1.3.0**。Python + Tkinter 桌面应用，使用 SQLite 保存账号、收支和预算，使用 Matplotlib 绘制 Dashboard。
 
-这是一个使用 SQLite 保存交易和预算的 Python 项目，包含 Tkinter 图形界面、命令行界面和财务数据看板。`1.1.0` 增加了 Dashboard 数据可视化；`1.2.0` 将 GUI 和 CLI 统一到同一个 SQLite 持久化流程，解决两个界面之间交易数据不互通的问题。项目源码位于 `finance_tracker`，Windows 单文件程序由 `财务管理系统.spec` 构建。
-
-## 运行环境
-
-- 已验证：Windows 11、Python 3.13.5、Tkinter 8.6、Matplotlib 3.10.8。
-- 源码运行需要 Python 自带的 Tkinter；数据看板另需安装 `requirements.txt` 中的 Matplotlib。
-- 重新打包需安装 `requirements-build.txt` 中的 PyInstaller 和 hooks。EXE 使用者无需安装 Python 依赖。
+## 启动
 
 ```powershell
 cd E:\PythonProject\finance_tracker
@@ -16,41 +10,52 @@ python -m pip install -r requirements.txt
 python gui.py
 ```
 
-打包后的最终用户程序只提供 GUI；个人用户以及未来规划中的家庭用户和公司财务用户都不需要使用 CLI。`python main.py` 是保留给开发者测试、诊断和维护的内部命令行入口，可用 `python main.py --help` 查看测试参数。图形界面右上角的 **Dashboard** 可查看收入、支出、结余、交易数、月度收支、支出分类和累计结余；可切换最近 6 个月、最近 12 个月或全部时间。
+当前直接从源码运行。若 `python` 指向 Windows 应用商店，可使用本机实际解释器，例如 `E:\Anaconda3\envs\ypr\python.exe gui.py`。
 
-## 数据和日志
+## 登录与使用
 
-GUI 和 CLI 现在都通过 `FinanceApplicationState` 保存完整状态，并默认访问项目目录中的同一个 SQLite 数据库：
+启动后先选择 **个人 / 家庭 / 小商铺**。首次使用选择“注册账号”（家庭选择“创建家庭”），设置账号和密码；以后选择“登录”。密码为 8–128 个字符，可在登录后的“修改密码”中凭原密码修改，改密后需重新登录。
+
+- **个人**：每个账号使用单独的账本文件，交易、预算、查询和 Dashboard 均仅针对当前个人。
+- **家庭**：创建时填写家庭账号、家庭成员账号和成员密码，创建者成为管理员。在“家庭成员”中生成邀请码；其他人在登录页选择“家庭 → 加入家庭”，填写家庭账号、邀请码并设置自己的成员账号、密码。以后使用“家庭账号 + 家庭成员账号 + 成员密码”登录。一个家庭共用一个账本，可看全部成员的记录及记录人，也可按成员筛选；支持共享月度预算、分类预算和成员收支对比。
+- **小商铺**：独立商铺账本，提供商品销售、服务收入、采购进货、店租、工资等分类，以及营业收入、经营支出和净现金流 Dashboard。
+
+家庭成员可共同添加记录、设置预算，并修改或删除自己的记录；管理员可管理家庭内全部记录。GUI 支持新增、删除、编号查询、分类筛选、撤销和重做。完整修改及 CSV/TXT 导出保留在开发者 CLI。家庭页约每 3 秒检查其他进程提交的更新，也可点击“刷新账本”；并发保存发生冲突会提示重新操作，避免覆盖其他成员的记录。
+
+退出登录会关闭 Dashboard、预算和成员窗口，清空旧账本及撤销历史。三种类型分别使用不同标题、分类、指标和 Dashboard；家庭 Dashboard 增加成员收支图。
+
+## 数据存储
+
+默认数据目录为项目中的 `data`：
 
 ```text
-E:\PythonProject\finance_tracker\data\finance_tracker.db
+data/
+  finance_tracker.db                 # 应用配置；账号功能启用前的旧收支已清空
+  finance_tracker_accounts.db        # 账号、成员、密码哈希和邀请码哈希
+  finance_tracker_ledgers/
+    <个人或家庭或商铺的内部ID>.db     # 每个账号/家庭/商铺单独的交易和预算
 ```
 
-数据库包含交易、月度预算、分类预算和应用元数据表。每次保存都在一个 SQLite 事务中提交，因此交易和预算不会再因 GUI/CLI 的序列化差异而互相覆盖。数据库还维护修订号；如果两个已打开的进程基于不同旧版本保存，较旧进程会收到冲突提示，而不是静默覆盖较新的数据。
+个人 A 与 B 的收支存于不同文件；同一家庭的不同成员共用一个文件，不同家庭的账本相互隔离。密码使用随机盐和 PBKDF2-HMAC-SHA256，邀请码仅存哈希。登录界面不提供列出其他账号或打开其他账本的入口。
 
-交易、预算、应用元数据和 CLI 配置现在全部保存在该 SQLite 数据库中。运行时代码不再读取或写入任何 `.json` 文件，也不再生成 `finance_data.backup*.json`。CLI 数据导出仅提供 CSV 和 TXT 报表。源码 GUI 与 CLI 共用项目 `data` 目录；打包后的 EXE 默认使用 EXE 同目录下的 `data` 目录。可用 `FINANCE_TRACKER_DB_PATH` 指定数据库文件，或用 `FINANCE_TRACKER_DATA_DIR` 指定数据目录，便于测试和特殊部署。
+2026-11-12 按要求删除了账号功能启用前的 9 条旧收支记录，原数据库保留应用配置。账号功能启用后的账号与账本数据保持不变，新注册账号从空账本开始。完整备份时请复制整个 `data` 目录（关闭程序后复制）。
 
-`data/app.log` 是 CLI 运行日志。Dashboard 错误堆栈写入 SQLite 数据库所在目录的 `dashboard_error.log`。这些日志不作为项目更新记录；功能变更见 `CHANGELOG.md`，当前进度见 `PROGRESS.md`。
+可用 `FINANCE_TRACKER_DATA_DIR` 指定数据目录，或用 `FINANCE_TRACKER_DB_PATH` 指定基础数据库位置；账号库和账本目录从该位置派生。例如基础路径 `D:\finance\demo.db` 对应 `demo_accounts.db` 和 `demo_ledgers/`。GUI 与 CLI 按相同规则定位同一账号账本。
 
-项目的长期方向还包括家庭共享财务管理和商务公司流水管理。目前只在 Use Case Diagram 中标记为 `planned`，本版本尚未实现账户隔离、成员权限、应收应付或公司报表。
+这是本地桌面版本：家庭共享针对同一套数据目录中的家庭账号；没有跨设备云同步或网络登录服务。商铺板块目前管理经营收支和现金流，库存、应收应付等能力仍属后续扩展。
 
-## 构建 Windows EXE
+## 开发
 
-```powershell
-python -m pip install -r requirements-build.txt
-python -m PyInstaller --noconfirm --clean .\财务管理系统.spec
-```
-
-生成文件为 `dist/财务管理系统.exe`。构建脚本收集 Matplotlib 的 TkAgg 后端和 NumPy 所需模块。构建后应从 EXE 打开 Dashboard 验证，因为主窗口启动成功不足以验证图表依赖。
-
-## 测试与文档
+CLI 是内部维护入口，也必须认证：
 
 ```powershell
+python main.py --help
+python main.py --list
 python -m unittest discover -s tests -q
 ```
 
-- `REQUIREMENTS.md`：项目功能、技术要求和验收标准。
-- `CHANGELOG.md`：按日期记录已经完成的变更。
-- `PROGRESS.md`：当前完成情况、验证结果和待办问题。
-- `docs/uml/README.md`：Context Modeling、Use Case、Class、Sequence 等 UML 图及其渲染说明。
-- `.codebuddy/rules/financial_tracker.mdc`：原课程项目约束，继续供 CodeBuddy 使用。
+`--list`、`--stat`、`--export` 等账本命令先选择登录类型并输入账号密码。`--help`、`--version` 和全局应用配置选项不访问用户账本。测试使用临时数据目录；界面测试实际创建 Tk 窗口、绘制 Matplotlib 图表，需要可用的桌面环境。
+
+现有测试源码保留，按需运行。当前阶段暂不开展打包验收，打包配置、依赖清单、构建产物及临时验证代码已移除。
+
+`CHANGELOG.md` 记录版本变更，`PROGRESS.md` 记录当前进度，`REQUIREMENTS.md` 为验收要求，`docs/ACCOUNTS.md` 说明账号边界；`docs/uml` 保留 1.2.0 的设计源文件，重复生成的图片和归档已清理。

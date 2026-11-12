@@ -66,7 +66,7 @@ class CSVExporter(ExportFormat):
                 # 写入表头
                 writer.writerow([
                     '交易ID', '日期', '时间', '类型', '分类', '金额', 
-                    '账户', '描述', '创建时间'
+                    '账户', '描述', '创建时间', '记录人', '成员ID'
                 ])
                 
                 # 写入数据
@@ -80,7 +80,9 @@ class CSVExporter(ExportFormat):
                         f"{t.amount:.2f}",
                         t.account,
                         t.description or '',
-                        t.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                        t.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                        t.author_name,
+                        t.author_id
                     ])
             
             return True

@@ -40,7 +40,7 @@ class StorageBackend(ABC):
 class SQLiteStorage(StorageBackend):
     """Transactional SQLite storage shared by the GUI and CLI."""
 
-    SCHEMA_VERSION = "1"
+    SCHEMA_VERSION = "2"
 
     def __init__(self, filepath: str, timeout: float = 10.0):
         self._filepath = str(Path(filepath).expanduser().resolve())
@@ -54,11 +54,15 @@ class SQLiteStorage(StorageBackend):
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._filepath, timeout=self._timeout)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("PRAGMA busy_timeout = 10000")
-        connection.execute("PRAGMA journal_mode = WAL")
-        self._ensure_schema(connection)
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.execute("PRAGMA busy_timeout = 10000")
+            connection.execute("PRAGMA journal_mode = WAL")
+            self._ensure_schema(connection)
+        except Exception:
+            connection.close()
+            raise
         return connection
 
     def _ensure_schema(self, connection: sqlite3.Connection) -> None:
@@ -78,7 +82,9 @@ class SQLiteStorage(StorageBackend):
                 description TEXT NOT NULL DEFAULT '',
                 account TEXT NOT NULL,
                 transaction_date TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                author_id TEXT NOT NULL DEFAULT '',
+                author_name TEXT NOT NULL DEFAULT ''
             );
 
             CREATE INDEX IF NOT EXISTS idx_transactions_date
@@ -105,10 +111,16 @@ class SQLiteStorage(StorageBackend):
             );
             """
         )
+        connection.execute("BEGIN IMMEDIATE")
         connection.execute(
             "INSERT OR IGNORE INTO app_metadata(key, value) VALUES('schema_version', ?)",
             (self.SCHEMA_VERSION,),
         )
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(transactions)")}
+        for column in ("author_id", "author_name"):
+            if column not in columns:
+                connection.execute(f"ALTER TABLE transactions ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
+        connection.execute("UPDATE app_metadata SET value = ? WHERE key = 'schema_version'", (self.SCHEMA_VERSION,))
         connection.execute(
             "INSERT OR IGNORE INTO app_metadata(key, value) VALUES('revision', '0')"
         )
@@ -160,14 +172,17 @@ class SQLiteStorage(StorageBackend):
                         transaction.get("account", "Default account"),
                         transaction["transaction_date"],
                         transaction["created_at"],
+                        transaction.get("author_id", ""),
+                        transaction.get("author_name", ""),
                     )
                 )
             connection.executemany(
                 """
                 INSERT INTO transactions(
                     transaction_id, position, amount, transaction_type,
-                    category, description, account, transaction_date, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    category, description, account, transaction_date, created_at,
+                    author_id, author_name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 transaction_rows,
             )
@@ -247,6 +262,7 @@ class SQLiteStorage(StorageBackend):
 
         try:
             with closing(self._connect()) as connection:
+                connection.execute("BEGIN")
                 transactions = [
                     {
                         "transaction_id": row["transaction_id"],
@@ -257,6 +273,8 @@ class SQLiteStorage(StorageBackend):
                         "account": row["account"],
                         "transaction_date": row["transaction_date"],
                         "created_at": row["created_at"],
+                        "author_id": row["author_id"],
+                        "author_name": row["author_name"],
                     }
                     for row in connection.execute(
                         "SELECT * FROM transactions ORDER BY position"

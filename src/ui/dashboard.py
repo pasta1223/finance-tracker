@@ -1,6 +1,7 @@
 """Matplotlib dashboard embedded in a Tkinter top-level window."""
 
 import tkinter as tk
+from datetime import timedelta
 from tkinter import ttk
 from typing import Callable, Iterable
 
@@ -8,28 +9,34 @@ from matplotlib import rcParams
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
+from matplotlib.dates import DateFormatter
 
 from ..models.transaction import Transaction
 from ..services.analytics import DashboardData, build_dashboard_data
+from ..services.workspaces import PROFILES
 
 
 class FinanceDashboard:
     """Interactive financial dashboard backed by the live transaction manager."""
 
     PERIODS = {
-        "Recent 6 months": 6,
-        "Recent 12 months": 12,
-        "All time": None,
+        "最近 6 个月": 6,
+        "最近 12 个月": 12,
+        "全部时间": None,
     }
 
     def __init__(
         self,
         parent: tk.Misc,
         transaction_provider: Callable[[], Iterable[Transaction]],
+        *, kind: str = "personal", workspace_name: str = "",
     ) -> None:
         self._transaction_provider = transaction_provider
+        self.kind = kind
+        self.profile = PROFILES[kind]
+        self.title = self.profile["title"] + " Dashboard" + (f" · {workspace_name}" if workspace_name else "")
         self.window = tk.Toplevel(parent)
-        self.window.title("Financial Dashboard")
+        self.window.title(self.title)
         self.window.geometry("1120x760")
         self.window.minsize(900, 620)
         self.window.configure(bg="#f4f6f8")
@@ -55,7 +62,7 @@ class FinanceDashboard:
 
         tk.Label(
             header,
-            text="Financial Dashboard",
+            text=self.title,
             bg="#22313f",
             fg="white",
             font=("Microsoft YaHei", 20, "bold"),
@@ -65,13 +72,13 @@ class FinanceDashboard:
         controls.pack(side="right", padx=18, pady=14)
         tk.Label(
             controls,
-            text="Period:",
+            text="期间：",
             bg="#22313f",
             fg="#dbe4ea",
             font=("Microsoft YaHei", 10),
         ).pack(side="left", padx=(0, 6))
 
-        self.period_var = tk.StringVar(value="Recent 6 months")
+        self.period_var = tk.StringVar(value="最近 6 个月")
         period_box = ttk.Combobox(
             controls,
             textvariable=self.period_var,
@@ -82,7 +89,7 @@ class FinanceDashboard:
         period_box.pack(side="left", padx=(0, 8))
         period_box.bind("<<ComboboxSelected>>", lambda _event: self.refresh())
 
-        ttk.Button(controls, text="Refresh", command=self.refresh).pack(side="left")
+        ttk.Button(controls, text="刷新", command=self.refresh).pack(side="left")
 
     def _build_kpis(self) -> None:
         container = tk.Frame(self.window, bg="#f4f6f8")
@@ -90,10 +97,10 @@ class FinanceDashboard:
         self._kpi_values = {}
 
         cards = (
-            ("Income", "income", "#149c68"),
-            ("Expense", "expense", "#e05252"),
-            ("Net balance", "balance", "#3478c0"),
-            ("Transactions", "count", "#7656a8"),
+            (self.profile["income"], "income", "#149c68"),
+            (self.profile["expense"], "expense", "#e05252"),
+            (self.profile["balance"], "balance", "#3478c0"),
+            ("交易记录", "count", "#7656a8"),
         )
         for title, key, color in cards:
             card = tk.Frame(
@@ -174,7 +181,7 @@ class FinanceDashboard:
             empty.text(
                 0.5,
                 0.54,
-                "No transaction data in this period",
+                "所选期间没有收支记录",
                 ha="center",
                 va="center",
                 fontsize=17,
@@ -184,7 +191,7 @@ class FinanceDashboard:
             empty.text(
                 0.5,
                 0.46,
-                "Add a transaction or choose another period.",
+                "添加记录或切换查看期间。",
                 ha="center",
                 va="center",
                 fontsize=10,
@@ -199,13 +206,28 @@ class FinanceDashboard:
         )
         monthly_axis = self.figure.add_subplot(grid[0, 0])
         category_axis = self.figure.add_subplot(grid[0, 1])
-        trend_axis = self.figure.add_subplot(grid[1, :])
+        trend_axis = self.figure.add_subplot(grid[1, 0] if self.kind == "family" else grid[1, :])
 
         self._draw_monthly(monthly_axis, data)
         self._draw_categories(category_axis, data)
         self._draw_trend(trend_axis, data)
+        if self.kind == "family":
+            self._draw_members(self.figure.add_subplot(grid[1, 1]), data)
         self.figure.subplots_adjust(left=0.07, right=0.96, top=0.94, bottom=0.12)
         self.canvas.draw_idle()
+
+    def _draw_members(self, axis, data):
+        from ..services.analytics import build_member_totals
+        totals = build_member_totals(data.transactions)
+        positions = list(range(len(totals)))
+        axis.bar([i - 0.18 for i in positions], [float(t[2]) for t in totals], 0.36, label="成员收入", color="#26b37b")
+        axis.bar([i + 0.18 for i in positions], [float(t[3]) for t in totals], 0.36, label="成员支出", color="#f06b6b")
+        axis.set_xticks(positions)
+        axis.set_xticklabels([t[1] for t in totals])
+        axis.set_title("家庭成员收支（所选期间）", loc="left", fontsize=11, fontweight="bold")
+        axis.yaxis.set_major_formatter(FuncFormatter(self._money_axis))
+        axis.legend(frameon=False, fontsize=8)
+        self._style_axis(axis)
 
     def _style_axis(self, axis) -> None:
         axis.spines["top"].set_visible(False)
@@ -227,17 +249,17 @@ class FinanceDashboard:
             [position - width / 2 for position in positions],
             incomes,
             width,
-            label="Income",
+            label=self.profile["income"],
             color="#36b37e",
         )
         axis.bar(
             [position + width / 2 for position in positions],
             expenses,
             width,
-            label="Expense",
+            label=self.profile["expense"],
             color="#f06b6b",
         )
-        axis.set_title("Monthly income and expense", loc="left", fontsize=11, fontweight="bold")
+        axis.set_title("月度收支", loc="left", fontsize=11, fontweight="bold")
         axis.set_xticks(positions)
         step = max(1, len(labels) // 8)
         axis.set_xticklabels(
@@ -250,13 +272,13 @@ class FinanceDashboard:
         self._style_axis(axis)
 
     def _draw_categories(self, axis, data: DashboardData) -> None:
-        axis.set_title("Expense categories", loc="left", fontsize=11, fontweight="bold")
+        axis.set_title("支出分类", loc="left", fontsize=11, fontweight="bold")
         axis.axis("off")
         if not data.category_expenses:
             axis.text(
                 0.5,
                 0.5,
-                "No expense data",
+                "暂无支出",
                 ha="center",
                 va="center",
                 color="#8a969e",
@@ -304,7 +326,11 @@ class FinanceDashboard:
         axis.plot(dates, balances, color=line_color, linewidth=2.2, marker="o", markersize=4)
         axis.fill_between(dates, balances, 0, color=line_color, alpha=0.10)
         axis.axhline(0, color="#9aa4ab", linewidth=0.8)
-        axis.set_title("Cumulative net balance (selected period)", loc="left", fontsize=11, fontweight="bold")
+        axis.set_title("累计净现金流（所选期间）" if self.kind == "shop" else "累计结余（所选期间）", loc="left", fontsize=11, fontweight="bold")
+        if len(dates) == 1:
+            axis.set_xlim(dates[0] - timedelta(days=1), dates[0] + timedelta(days=1))
+            axis.set_xticks(dates)
+            axis.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d"))
         axis.yaxis.set_major_formatter(FuncFormatter(self._money_axis))
         axis.tick_params(axis="x", rotation=20)
         axis.margins(x=0.02)

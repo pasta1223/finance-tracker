@@ -27,13 +27,13 @@ FinanceSystem --> Ledger : Atomically save transactions, budgets,\nand applicati
 Ledger --> FinanceSystem : Load the shared financial state\nand storage revision
 
 note bottom of FinanceSystem
-  The packaged product exposes a graphical interface only.
+  The desktop application exposes a graphical interface to end users.
   Personal finance is implemented in the current release.
   Household and company-finance interfaces are planned extensions.
 end note
 
 note bottom of Ledger
-  The packaged GUI uses the SQLite database beside the executable.
+  The GUI uses the SQLite database in the project data directory.
   SQLite is embedded and does not require a database server.
   The current system has no cloud synchronization, remote API,
   or third-party payment platform.

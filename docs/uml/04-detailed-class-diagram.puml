@@ -9,7 +9,7 @@ skinparam shadowing false
 hide empty members
 
 package "GUI Layer" {
-  class FinanceApp <<packaged Tkinter GUI>> {
+  class FinanceApp <<Tkinter GUI>> {
     - root
     - state: FinanceApplicationState
     - manager: TransactionManager

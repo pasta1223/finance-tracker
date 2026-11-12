@@ -37,7 +37,9 @@ class Transaction:
         account: str = "Default account",
         transaction_date: Optional[datetime] = None,
         transaction_id: Optional[str] = None,
-        created_at: Optional[datetime] = None
+        created_at: Optional[datetime] = None,
+        author_id: str = "",
+        author_name: str = ""
     ):
         """
         初始化交易记录
@@ -53,6 +55,8 @@ class Transaction:
         """
         self._transaction_id = transaction_id or str(uuid.uuid4())[:8]
         self._created_at = created_at or datetime.now()
+        self._author_id = author_id
+        self._author_name = author_name
         
         # 验证并设置金额
         self.amount = amount
@@ -70,6 +74,14 @@ class Transaction:
     
     # ==================== 属性访问器 ====================
     
+    @property
+    def author_id(self) -> str:
+        return self._author_id
+
+    @property
+    def author_name(self) -> str:
+        return self._author_name
+
     @property
     def transaction_id(self) -> str:
         """交易ID（只读）"""
@@ -94,7 +106,7 @@ class Transaction:
             except:
                 raise ValidationError("amount", "Amount must be a Decimal")
         
-        if value <= 0:
+        if not value.is_finite() or value <= 0:
             raise ValidationError("amount", "Amount must be greater than 0")
         
         # 保留两位小数
@@ -191,7 +203,9 @@ class Transaction:
             "description": self._description,
             "account": self._account,
             "transaction_date": self._transaction_date.isoformat(),
-            "created_at": self._created_at.isoformat()
+            "created_at": self._created_at.isoformat(),
+            "author_id": self._author_id,
+            "author_name": self._author_name
         }
     
     @classmethod
@@ -205,7 +219,9 @@ class Transaction:
             description=data.get("description", ""),
             account=data.get("account", "Default account"),
             transaction_date=datetime.fromisoformat(data["transaction_date"]),
-            created_at=datetime.fromisoformat(data["created_at"])
+            created_at=datetime.fromisoformat(data["created_at"]),
+            author_id=data.get("author_id", ""),
+            author_name=data.get("author_name", "")
         )
     
     # ==================== 字符串表示 ====================

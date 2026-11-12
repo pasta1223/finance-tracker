@@ -9,7 +9,7 @@ skinparam shadowing false
 hide empty members
 
 package "GUI" {
-  class FinanceApp <<packaged GUI>> {
+  class FinanceApp <<desktop GUI>> {
     - state: FinanceApplicationState
     - dashboard: FinanceDashboard?
     + add_transaction()
